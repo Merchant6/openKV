@@ -1,0 +1,50 @@
+# Agent/project instruction files
+AGENTS.md
+Agents.md
+agents.md
+.agents/
+.codex/
+
+# Dependencies
+vendor/
+node_modules/
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# Runtime data, logs, and temporary files
+storage/
+runtime/
+tmp/
+temp/
+logs/
+*.log
+*.pid
+*.sock
+
+# Test and quality-tool output
+.phpunit.cache/
+.phpunit.result.cache
+.pest/
+coverage/
+build/
+.php-cs-fixer.cache
+.phpstan/
+.psalm/
+
+# Composer artifacts
+composer.phar
+
+# IDE/editor metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
