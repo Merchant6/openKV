@@ -1,0 +1,21 @@
+{
+    "name": "saboor/swoole-kv",
+    "description": "Redis-inspired in-memory key-value database built with PHP and OpenSwoole",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "openswoole/core": "^22.1"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Saboor\\SwooleKv\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Merchant6",
+            "email": "saboormerchant6@gmail.com"
+        }
+    ]
+}
