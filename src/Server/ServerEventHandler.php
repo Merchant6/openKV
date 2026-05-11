@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Saboor\SwooleKv\Server;
 
 use OpenSwoole\Server;
+use Saboor\SwooleKv\Command\CommandHandler;
 use Saboor\SwooleKv\Command\CommandParser;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -15,6 +16,7 @@ final readonly class ServerEventHandler
         private string $host,
         private int $port,
         private CommandParser $commandParser = new CommandParser(),
+        private CommandHandler $commandHandler = new CommandHandler(),
     ) {
     }
 
@@ -39,7 +41,7 @@ final readonly class ServerEventHandler
             return;
         }
 
-        $server->send($fd, sprintf("-ERR command '%s' is not implemented yet\r\n", $command->name));
+        $server->send($fd, $this->commandHandler->handle($command));
     }
 
     public function onClose(Server $server, int $fd): void
