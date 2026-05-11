@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Saboor\SwooleKv\Console\Command;
 
 use OpenSwoole\Server;
+use Saboor\SwooleKv\Server\ServerEventHandler;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -30,21 +31,12 @@ final class StartServerCommand extends Command
         $port = (int) $input->getOption('port');
 
         $server = new Server($host, $port);
+        $eventHandler = new ServerEventHandler($output, $host, $port);
 
-        $server->on('start', static function (Server $server) use ($output, $host, $port): void {
-            $output->writeln(sprintf('SwooleKV TCP server listening on %s:%d', $host, $port));
-        });
-
-        $server->on('connect', static function (Server $server, int $fd): void {
-            $server->send($fd, "+OK SwooleKV connected\r\n");
-        });
-
-        $server->on('receive', static function (Server $server, int $fd, int $reactorId, string $data): void {
-            $server->send($fd, "-ERR command handling is not implemented yet\r\n");
-        });
-
-        $server->on('close', static function (Server $server, int $fd): void {
-        });
+        $server->on('start', $eventHandler->onStart(...));
+        $server->on('connect', $eventHandler->onConnect(...));
+        $server->on('receive', $eventHandler->onReceive(...));
+        $server->on('close', $eventHandler->onClose(...));
 
         $server->start();
 
