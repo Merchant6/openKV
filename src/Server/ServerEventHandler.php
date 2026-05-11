@@ -7,17 +7,22 @@ namespace Saboor\SwooleKv\Server;
 use OpenSwoole\Server;
 use Saboor\SwooleKv\Command\CommandHandler;
 use Saboor\SwooleKv\Command\CommandParser;
+use Saboor\SwooleKv\Storage\KeyValueStore;
 use Symfony\Component\Console\Output\OutputInterface;
 
 final readonly class ServerEventHandler
 {
+    private CommandHandler $commandHandler;
+
     public function __construct(
         private OutputInterface $output,
         private string $host,
         private int $port,
+        KeyValueStore $store,
         private CommandParser $commandParser = new CommandParser(),
-        private CommandHandler $commandHandler = new CommandHandler(),
+        ?CommandHandler $commandHandler = null,
     ) {
+        $this->commandHandler = $commandHandler ?? new CommandHandler($store);
     }
 
     public function onStart(Server $server): void

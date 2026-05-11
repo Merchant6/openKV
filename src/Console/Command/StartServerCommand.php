@@ -6,6 +6,7 @@ namespace Saboor\SwooleKv\Console\Command;
 
 use OpenSwoole\Server;
 use Saboor\SwooleKv\Server\ServerEventHandler;
+use Saboor\SwooleKv\Storage\SwooleTableStore;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -31,7 +32,8 @@ final class StartServerCommand extends Command
         $port = (int) $input->getOption('port');
 
         $server = new Server($host, $port);
-        $eventHandler = new ServerEventHandler($output, $host, $port);
+        $store = SwooleTableStore::create();
+        $eventHandler = new ServerEventHandler($output, $host, $port, $store);
 
         $server->on('start', $eventHandler->onStart(...));
         $server->on('connect', $eventHandler->onConnect(...));
