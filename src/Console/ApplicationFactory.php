@@ -12,7 +12,7 @@ final class ApplicationFactory
     public static function create(): Application
     {
         $application = new Application('SwooleKV', '0.1.0');
-        $application->add(new StartServerCommand());
+        $application->addCommand(new StartServerCommand());
 
         return $application;
     }
