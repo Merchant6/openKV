@@ -4,7 +4,8 @@
     "type": "project",
     "require": {
         "php": "^8.3",
-        "openswoole/core": "^22.1"
+        "openswoole/core": "^22.1",
+        "symfony/console": "^7.0"
     },
     "license": "MIT",
     "autoload": {
@@ -17,6 +18,9 @@
             "name": "Merchant6",
             "email": "saboormerchant6@gmail.com"
         }
+    ],
+    "bin": [
+        "bin/swoole-kv"
     ],
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",
