@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Saboor\SwooleKv\Server;
 
 use OpenSwoole\Server;
+use Saboor\SwooleKv\Command\CommandParser;
 use Symfony\Component\Console\Output\OutputInterface;
 
 final readonly class ServerEventHandler
@@ -13,6 +14,7 @@ final readonly class ServerEventHandler
         private OutputInterface $output,
         private string $host,
         private int $port,
+        private CommandParser $commandParser = new CommandParser(),
     ) {
     }
 
@@ -29,7 +31,15 @@ final readonly class ServerEventHandler
 
     public function onReceive(Server $server, int $fd, int $reactorId, string $data): void
     {
-        $server->send($fd, "-ERR command handling is not implemented yet\r\n");
+        $command = $this->commandParser->parse($data);
+
+        if ($command === null) {
+            $server->send($fd, "-ERR empty command\r\n");
+
+            return;
+        }
+
+        $server->send($fd, sprintf("-ERR command '%s' is not implemented yet\r\n", $command->name));
     }
 
     public function onClose(Server $server, int $fd): void
