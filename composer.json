@@ -13,6 +13,14 @@
             "Saboor\\SwooleKv\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Saboor\\SwooleKv\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
     "authors": [
         {
             "name": "Merchant6",
