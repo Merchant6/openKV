@@ -13,4 +13,10 @@ interface KeyValueStore
     public function delete(string $key): bool;
 
     public function exists(string $key): bool;
+
+    public function expire(string $key, int $seconds): bool;
+
+    public function ttl(string $key): int;
+
+    public function purgeExpired(): int;
 }

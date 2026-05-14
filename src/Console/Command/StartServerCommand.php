@@ -36,6 +36,8 @@ final class StartServerCommand extends Command
         $eventHandler = new ServerEventHandler($output, $host, $port, $store);
 
         $server->on('start', $eventHandler->onStart(...));
+        $server->on('workerStart', $eventHandler->onWorkerStart(...));
+        $server->on('workerStop', $eventHandler->onWorkerStop(...));
         $server->on('connect', $eventHandler->onConnect(...));
         $server->on('receive', $eventHandler->onReceive(...));
         $server->on('close', $eventHandler->onClose(...));
