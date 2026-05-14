@@ -19,6 +19,8 @@ final class CommandHandler
             'PING' => $this->handlePing($command),
             'SET' => $this->handleSet($command),
             'GET' => $this->handleGet($command),
+            'DEL' => $this->handleDelete($command),
+            'EXISTS' => $this->handleExists($command),
             default => sprintf("-ERR command '%s' is not implemented yet\r\n", $command->name),
         };
     }
@@ -62,5 +64,23 @@ final class CommandHandler
         }
 
         return sprintf("$%d\r\n%s\r\n", strlen($value), $value);
+    }
+
+    private function handleDelete(ParsedCommand $command): string
+    {
+        if (count($command->arguments) !== 1) {
+            return "-ERR wrong number of arguments for 'DEL' command\r\n";
+        }
+
+        return sprintf(":%d\r\n", $this->store->delete($command->arguments[0]) ? 1 : 0);
+    }
+
+    private function handleExists(ParsedCommand $command): string
+    {
+        if (count($command->arguments) !== 1) {
+            return "-ERR wrong number of arguments for 'EXISTS' command\r\n";
+        }
+
+        return sprintf(":%d\r\n", $this->store->exists($command->arguments[0]) ? 1 : 0);
     }
 }
