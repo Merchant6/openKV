@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace Saboor\SwooleKv\Command;
 
 use InvalidArgumentException;
+use Saboor\SwooleKv\Metrics\ServerMetrics;
 use Saboor\SwooleKv\Storage\KeyValueStore;
 
 final class CommandHandler
 {
     public function __construct(
         private readonly KeyValueStore $store,
+        private readonly ServerMetrics $metrics = new ServerMetrics(),
     ) {
     }
 
     public function handle(ParsedCommand $command): string
     {
+        $this->metrics->recordCommand();
+
         return match ($command->name) {
             'PING' => $this->handlePing($command),
             'SET' => $this->handleSet($command),
@@ -26,6 +30,8 @@ final class CommandHandler
             'TTL' => $this->handleTtl($command),
             'INCR' => $this->handleIncrement($command, 1),
             'DECR' => $this->handleIncrement($command, -1),
+            'INFO' => $this->handleInfo($command),
+            'STATS' => $this->handleStats($command),
             default => sprintf("-ERR command '%s' is not implemented yet\r\n", $command->name),
         };
     }
@@ -124,5 +130,57 @@ final class CommandHandler
         } catch (InvalidArgumentException $exception) {
             return sprintf("-ERR %s\r\n", $exception->getMessage());
         }
+    }
+
+    private function handleInfo(ParsedCommand $command): string
+    {
+        if ($command->arguments !== []) {
+            return "-ERR wrong number of arguments for 'INFO' command\r\n";
+        }
+
+        $snapshot = $this->metrics->snapshot();
+        $body = implode("\r\n", [
+            '# Server',
+            'swoolekv_version:0.1.0',
+            sprintf('uptime_seconds:%d', $snapshot['uptime_seconds']),
+            sprintf('worker_count:%d', $snapshot['worker_count']),
+            '',
+            '# Clients',
+            sprintf('connections_handled:%d', $snapshot['connections_handled']),
+            sprintf('active_connections:%d', $snapshot['active_connections']),
+            '',
+            '# Stats',
+            sprintf('commands_processed:%d', $snapshot['commands_processed']),
+            sprintf('requests_per_second:%.2f', $snapshot['requests_per_second']),
+            sprintf('expired_keys:%d', $snapshot['expired_keys']),
+            '',
+            '# Storage',
+            sprintf('total_keys:%d', $this->store->keyCount()),
+            '',
+            '# Memory',
+            sprintf('memory_usage_bytes:%d', $snapshot['memory_usage_bytes']),
+        ]);
+
+        return sprintf("$%d\r\n%s\r\n", strlen($body), $body);
+    }
+
+    private function handleStats(ParsedCommand $command): string
+    {
+        if ($command->arguments !== []) {
+            return "-ERR wrong number of arguments for 'STATS' command\r\n";
+        }
+
+        $snapshot = $this->metrics->snapshot();
+        $body = implode("\r\n", [
+            sprintf('commands_processed:%d', $snapshot['commands_processed']),
+            sprintf('total_keys:%d', $this->store->keyCount()),
+            sprintf('expired_keys:%d', $snapshot['expired_keys']),
+            sprintf('uptime_seconds:%d', $snapshot['uptime_seconds']),
+            sprintf('requests_per_second:%.2f', $snapshot['requests_per_second']),
+            sprintf('connections_handled:%d', $snapshot['connections_handled']),
+            sprintf('active_connections:%d', $snapshot['active_connections']),
+        ]);
+
+        return sprintf("$%d\r\n%s\r\n", strlen($body), $body);
     }
 }

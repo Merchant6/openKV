@@ -6,6 +6,7 @@ namespace Saboor\SwooleKv\Timer;
 
 use OpenSwoole\Timer;
 use RuntimeException;
+use Saboor\SwooleKv\Metrics\ServerMetrics;
 use Saboor\SwooleKv\Storage\KeyValueStore;
 
 final class ExpirationTimer
@@ -14,6 +15,7 @@ final class ExpirationTimer
 
     public function __construct(
         private readonly KeyValueStore $store,
+        private readonly ?ServerMetrics $metrics = null,
         private readonly int $intervalMilliseconds = 1000,
     ) {
     }
@@ -26,7 +28,12 @@ final class ExpirationTimer
 
         $timerId = Timer::tick(
             $this->intervalMilliseconds,
-            fn (): int => $this->store->purgeExpired(),
+            function (): int {
+                $purged = $this->store->purgeExpired();
+                $this->metrics?->recordExpiredKeys($purged);
+
+                return $purged;
+            },
         );
 
         if ($timerId === false) {

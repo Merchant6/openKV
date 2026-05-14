@@ -7,6 +7,7 @@ namespace Saboor\SwooleKv\Server;
 use OpenSwoole\Server;
 use Saboor\SwooleKv\Command\CommandHandler;
 use Saboor\SwooleKv\Command\CommandParser;
+use Saboor\SwooleKv\Metrics\ServerMetrics;
 use Saboor\SwooleKv\Storage\KeyValueStore;
 use Saboor\SwooleKv\Timer\ExpirationTimer;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,6 +16,7 @@ final readonly class ServerEventHandler
 {
     private CommandHandler $commandHandler;
     private ExpirationTimer $expirationTimer;
+    private ServerMetrics $metrics;
 
     public function __construct(
         private OutputInterface $output,
@@ -24,9 +26,11 @@ final readonly class ServerEventHandler
         private CommandParser $commandParser = new CommandParser(),
         ?CommandHandler $commandHandler = null,
         ?ExpirationTimer $expirationTimer = null,
+        ?ServerMetrics $metrics = null,
     ) {
-        $this->commandHandler = $commandHandler ?? new CommandHandler($store);
-        $this->expirationTimer = $expirationTimer ?? new ExpirationTimer($store);
+        $this->metrics = $metrics ?? new ServerMetrics();
+        $this->commandHandler = $commandHandler ?? new CommandHandler($store, $this->metrics);
+        $this->expirationTimer = $expirationTimer ?? new ExpirationTimer($store, $this->metrics);
     }
 
     public function onStart(Server $server): void
@@ -36,6 +40,7 @@ final readonly class ServerEventHandler
 
     public function onWorkerStart(Server $server, int $workerId): void
     {
+        $this->metrics->recordWorkerStarted();
         $this->expirationTimer->start();
         $this->output->writeln(sprintf('Worker started: #%d', $workerId));
     }
@@ -43,11 +48,13 @@ final readonly class ServerEventHandler
     public function onWorkerStop(Server $server, int $workerId): void
     {
         $this->expirationTimer->stop();
+        $this->metrics->recordWorkerStopped();
         $this->output->writeln(sprintf('Worker stopped: #%d', $workerId));
     }
 
     public function onConnect(Server $server, int $fd): void
     {
+        $this->metrics->recordConnectionOpened();
         $this->output->writeln(sprintf('Client connected: #%d', $fd));
         $server->send($fd, "+OK SwooleKV connected\r\n");
     }
@@ -67,6 +74,7 @@ final readonly class ServerEventHandler
 
     public function onClose(Server $server, int $fd): void
     {
+        $this->metrics->recordConnectionClosed();
         $this->output->writeln(sprintf('Client disconnected: #%d', $fd));
     }
 }

@@ -21,4 +21,6 @@ interface KeyValueStore
     public function ttl(string $key): int;
 
     public function purgeExpired(): int;
+
+    public function keyCount(): int;
 }

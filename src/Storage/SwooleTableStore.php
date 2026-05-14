@@ -148,6 +148,23 @@ final class SwooleTableStore implements KeyValueStore
         return $purged;
     }
 
+    public function keyCount(): int
+    {
+        $count = 0;
+
+        foreach ($this->table as $key => $row) {
+            if ($this->isExpired($row)) {
+                $this->table->del((string) $key);
+
+                continue;
+            }
+
+            ++$count;
+        }
+
+        return $count;
+    }
+
     /**
      * @param array{expires_at: int} $row
      */
