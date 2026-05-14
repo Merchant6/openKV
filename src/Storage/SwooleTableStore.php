@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Saboor\SwooleKv\Storage;
 
 use Closure;
+use InvalidArgumentException;
 use OpenSwoole\Table;
 use RuntimeException;
 
@@ -65,6 +66,30 @@ final class SwooleTableStore implements KeyValueStore
         $this->deleteIfExpired($key);
 
         return $this->table->exists($key);
+    }
+
+    public function increment(string $key, int $delta): int
+    {
+        $row = $this->table->get($key);
+
+        if ($row === false || $this->isExpired($row)) {
+            if ($row !== false) {
+                $this->table->del($key);
+            }
+
+            $newValue = $delta;
+            $expiresAt = 0;
+        } else {
+            $currentValue = $this->parseIntegerValue($key, $row['value']);
+            $newValue = $currentValue + $delta;
+            $expiresAt = $row['expires_at'];
+        }
+
+        if (! $this->table->set($key, ['value' => (string) $newValue, 'expires_at' => $expiresAt])) {
+            throw new RuntimeException(sprintf("Unable to mutate key '%s'.", $key));
+        }
+
+        return $newValue;
     }
 
     public function expire(string $key, int $seconds): bool
@@ -143,5 +168,16 @@ final class SwooleTableStore implements KeyValueStore
     private function now(): int
     {
         return ($this->clock)();
+    }
+
+    private function parseIntegerValue(string $key, string $value): int
+    {
+        $integer = filter_var($value, FILTER_VALIDATE_INT);
+
+        if ($integer === false) {
+            throw new InvalidArgumentException(sprintf("Value for key '%s' is not an integer.", $key));
+        }
+
+        return $integer;
     }
 }

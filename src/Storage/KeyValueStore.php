@@ -14,6 +14,8 @@ interface KeyValueStore
 
     public function exists(string $key): bool;
 
+    public function increment(string $key, int $delta): int;
+
     public function expire(string $key, int $seconds): bool;
 
     public function ttl(string $key): int;

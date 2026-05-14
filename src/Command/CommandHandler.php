@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Saboor\SwooleKv\Command;
 
+use InvalidArgumentException;
 use Saboor\SwooleKv\Storage\KeyValueStore;
 
 final class CommandHandler
@@ -23,6 +24,8 @@ final class CommandHandler
             'EXISTS' => $this->handleExists($command),
             'EXPIRE' => $this->handleExpire($command),
             'TTL' => $this->handleTtl($command),
+            'INCR' => $this->handleIncrement($command, 1),
+            'DECR' => $this->handleIncrement($command, -1),
             default => sprintf("-ERR command '%s' is not implemented yet\r\n", $command->name),
         };
     }
@@ -108,5 +111,18 @@ final class CommandHandler
         }
 
         return sprintf(":%d\r\n", $this->store->ttl($command->arguments[0]));
+    }
+
+    private function handleIncrement(ParsedCommand $command, int $delta): string
+    {
+        if (count($command->arguments) !== 1) {
+            return sprintf("-ERR wrong number of arguments for '%s' command\r\n", $command->name);
+        }
+
+        try {
+            return sprintf(":%d\r\n", $this->store->increment($command->arguments[0], $delta));
+        } catch (InvalidArgumentException $exception) {
+            return sprintf("-ERR %s\r\n", $exception->getMessage());
+        }
     }
 }
