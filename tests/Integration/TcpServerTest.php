@@ -28,6 +28,31 @@ final class TcpServerTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->stopServer();
+    }
+
+    public function testItRejectsConnectionsAboveConfiguredLimit(): void
+    {
+        $this->stopServer();
+        $this->startServer(1);
+
+        $firstConnection = $this->connect();
+        self::assertSame("+OK SwooleKV connected\r\n", $this->readLine($firstConnection));
+
+        $secondConnection = $this->connect();
+        self::assertSame("-ERR max clients reached\r\n", $this->readLine($secondConnection));
+
+        $stats = $this->sendCommand($firstConnection, 'STATS');
+        self::assertStringContainsString("max_connections:1\r\n", $stats);
+        self::assertStringContainsString("active_connections:1\r\n", $stats);
+        self::assertStringContainsString("rejected_connections:1\r\n", $stats);
+
+        fclose($firstConnection);
+        fclose($secondConnection);
+    }
+
+    private function stopServer(): void
+    {
         if ($this->process === null) {
             return;
         }
@@ -207,16 +232,22 @@ final class TcpServerTest extends TestCase
         return (int) substr(strrchr($name, ':'), 1);
     }
 
-    private function startServer(): void
+    private function startServer(?int $maxConnections = null): void
     {
+        $command = [
+            'php',
+            dirname(__DIR__, 2) . '/bin/swoole-kv',
+            'server:start',
+            '--host=127.0.0.1',
+            sprintf('--port=%d', $this->port),
+        ];
+
+        if ($maxConnections !== null) {
+            $command[] = sprintf('--max-connections=%d', $maxConnections);
+        }
+
         $this->process = proc_open(
-            [
-                'php',
-                dirname(__DIR__, 2) . '/bin/swoole-kv',
-                'server:start',
-                '--host=127.0.0.1',
-                sprintf('--port=%d', $this->port),
-            ],
+            $command,
             [
                 0 => ['pipe', 'r'],
                 1 => ['pipe', 'w'],
@@ -243,7 +274,10 @@ final class TcpServerTest extends TestCase
             );
 
             if ($connection !== false) {
+                stream_set_timeout($connection, 1);
+                fgets($connection);
                 fclose($connection);
+                usleep(100_000);
 
                 return;
             }

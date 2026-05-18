@@ -46,6 +46,30 @@ Use a custom host or port:
 php bin/swoole-kv server:start --host=127.0.0.1 --port=9601
 ```
 
+Limit active clients and tune socket admission behavior:
+
+```bash
+php bin/swoole-kv server:start \
+  --max-connections=10000 \
+  --worker-num=1 \
+  --backlog=2048 \
+  --heartbeat-idle-time=120 \
+  --heartbeat-check-interval=30
+```
+
+When the application-level connection limit is reached, SwooleKV responds with:
+
+```txt
+-ERR max clients reached
+```
+
+OpenSwoole cannot accept more connections than the process file descriptor limit allows. If the server refuses to start with a file descriptor message, raise the shell limit before starting it:
+
+```bash
+ulimit -n 20000
+php bin/swoole-kv server:start --max-connections=10000
+```
+
 ## Connect With nc
 
 In another terminal:
@@ -198,8 +222,10 @@ uptime_seconds:10
 worker_count:1
 
 # Clients
+max_connections:10000
 connections_handled:1
 active_connections:1
+rejected_connections:0
 
 # Stats
 commands_processed:4
@@ -225,9 +251,34 @@ total_keys:2
 expired_keys:0
 uptime_seconds:10
 requests_per_second:0.30
+max_connections:10000
 connections_handled:1
 active_connections:1
+rejected_connections:0
 ```
+
+## Benchmark
+
+The benchmark command uses a client-side connection pool. It opens a fixed number of persistent TCP connections, reads the server banner once per connection, and reuses those sockets across the request count.
+
+```bash
+php bin/swoole-kv benchmark --connections=100 --requests=100000 --command=PING
+```
+
+Example output:
+
+```txt
+SwooleKV benchmark complete
+command: PING
+connections: 100
+requests: 100000
+successful_requests: 100000
+failed_requests: 0
+elapsed_seconds: 2.3512
+requests_per_second: 42531.47
+```
+
+Use connection counts to test client pressure, not one connection per request. For example, 100 hot persistent connections sending 1,000,000 commands is a throughput test, while 10,000 open sockets is primarily a connection scalability test.
 
 ## Testing
 
@@ -274,6 +325,7 @@ Key boundaries:
 - `KeyValueStore` defines the storage boundary.
 - `SwooleTableStore` stores values and expiration metadata in `Swoole\Table`.
 - `ServerEventHandler` owns OpenSwoole server event callbacks.
+- `ConnectionRegistry` tracks accepted, active, and rejected clients across workers.
 - `ExpirationTimer` centralizes background TTL cleanup.
 - `ServerMetrics` tracks runtime counters for `INFO` and `STATS`.
 
@@ -289,7 +341,7 @@ Command execution is intentionally synchronous inside each worker callback. That
 
 The protocol is deliberately RESP-like but simplified. Simple strings, integers, errors, bulk strings, and null bulk strings are enough to make behavior inspectable with `nc` while leaving room for future RESP compatibility. The command layer validates argument counts and numeric input before touching storage, so malformed client input produces deterministic errors instead of corrupting state.
 
-Metrics are kept as a first-class runtime concern. `INFO` and `STATS` expose command counts, live keys, expired keys, uptime, memory usage, connections, and worker count. These numbers are not meant to claim production-grade performance. They exist so the server can be observed while it runs and so future benchmark work has concrete counters to compare against.
+Metrics are kept as a first-class runtime concern. `INFO` and `STATS` expose command counts, live keys, expired keys, uptime, memory usage, accepted connections, rejected connections, configured connection limit, and worker count. These numbers are not meant to claim production-grade performance. They exist so the server can be observed while it runs and so benchmark work has concrete counters to compare against.
 
 The codebase is intentionally phased. Each commit introduces one coherent capability: server bootstrap, parsing, storage, core commands, TTL, numeric mutation, observability, and TCP integration tests. That history matters because the project is educational. The goal is not only to end up with a small key-value server, but to show how such a system grows from explicit boundaries and runtime responsibilities.
 
@@ -301,14 +353,13 @@ The codebase is intentionally phased. Each commit introduces one coherent capabi
 - `DEL` and `EXISTS` accept one key at a time.
 - Metrics are process-local and simple.
 - Authentication, TLS, replication, pub/sub, streams, and snapshots are not implemented.
-- Benchmark tooling is planned but not implemented yet.
+- Benchmark tooling is intentionally simple and currently reuses a fixed client-side connection pool.
 
 ## Roadmap
 
 Near-term improvements:
 
 - Usage-focused documentation examples for more command flows
-- Benchmark command: `php bin/swoole-kv benchmark`
 - Stats command: `php bin/swoole-kv stats`
 - Graceful stop command: `php bin/swoole-kv server:stop`
 - More deterministic unit tests for parser, storage, TTL, and metrics

@@ -6,6 +6,7 @@ namespace Saboor\SwooleKv\Command;
 
 use InvalidArgumentException;
 use Saboor\SwooleKv\Metrics\ServerMetrics;
+use Saboor\SwooleKv\Server\ConnectionRegistry;
 use Saboor\SwooleKv\Storage\KeyValueStore;
 
 final class CommandHandler
@@ -13,6 +14,7 @@ final class CommandHandler
     public function __construct(
         private readonly KeyValueStore $store,
         private readonly ServerMetrics $metrics = new ServerMetrics(),
+        private readonly ?ConnectionRegistry $connectionRegistry = null,
     ) {
     }
 
@@ -139,6 +141,7 @@ final class CommandHandler
         }
 
         $snapshot = $this->metrics->snapshot();
+        $connectionSnapshot = $this->connectionSnapshot($snapshot);
         $body = implode("\r\n", [
             '# Server',
             'swoolekv_version:0.1.0',
@@ -146,8 +149,10 @@ final class CommandHandler
             sprintf('worker_count:%d', $snapshot['worker_count']),
             '',
             '# Clients',
-            sprintf('connections_handled:%d', $snapshot['connections_handled']),
-            sprintf('active_connections:%d', $snapshot['active_connections']),
+            sprintf('max_connections:%d', $connectionSnapshot['max_connections']),
+            sprintf('connections_handled:%d', $connectionSnapshot['connections_handled']),
+            sprintf('active_connections:%d', $connectionSnapshot['active_connections']),
+            sprintf('rejected_connections:%d', $connectionSnapshot['rejected_connections']),
             '',
             '# Stats',
             sprintf('commands_processed:%d', $snapshot['commands_processed']),
@@ -171,16 +176,46 @@ final class CommandHandler
         }
 
         $snapshot = $this->metrics->snapshot();
+        $connectionSnapshot = $this->connectionSnapshot($snapshot);
         $body = implode("\r\n", [
             sprintf('commands_processed:%d', $snapshot['commands_processed']),
             sprintf('total_keys:%d', $this->store->keyCount()),
             sprintf('expired_keys:%d', $snapshot['expired_keys']),
             sprintf('uptime_seconds:%d', $snapshot['uptime_seconds']),
             sprintf('requests_per_second:%.2f', $snapshot['requests_per_second']),
-            sprintf('connections_handled:%d', $snapshot['connections_handled']),
-            sprintf('active_connections:%d', $snapshot['active_connections']),
+            sprintf('max_connections:%d', $connectionSnapshot['max_connections']),
+            sprintf('connections_handled:%d', $connectionSnapshot['connections_handled']),
+            sprintf('active_connections:%d', $connectionSnapshot['active_connections']),
+            sprintf('rejected_connections:%d', $connectionSnapshot['rejected_connections']),
         ]);
 
         return sprintf("$%d\r\n%s\r\n", strlen($body), $body);
+    }
+
+    /**
+     * @param array{
+     *     connections_handled: int,
+     *     active_connections: int
+     * } $snapshot
+     *
+     * @return array{
+     *     max_connections: int,
+     *     connections_handled: int,
+     *     active_connections: int,
+     *     rejected_connections: int
+     * }
+     */
+    private function connectionSnapshot(array $snapshot): array
+    {
+        if ($this->connectionRegistry !== null) {
+            return $this->connectionRegistry->snapshot();
+        }
+
+        return [
+            'max_connections' => 0,
+            'connections_handled' => $snapshot['connections_handled'],
+            'active_connections' => $snapshot['active_connections'],
+            'rejected_connections' => 0,
+        ];
     }
 }

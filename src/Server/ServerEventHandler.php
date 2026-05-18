@@ -23,13 +23,14 @@ final readonly class ServerEventHandler
         private string $host,
         private int $port,
         KeyValueStore $store,
+        private readonly ConnectionRegistry $connectionRegistry,
         private CommandParser $commandParser = new CommandParser(),
         ?CommandHandler $commandHandler = null,
         ?ExpirationTimer $expirationTimer = null,
         ?ServerMetrics $metrics = null,
     ) {
         $this->metrics = $metrics ?? new ServerMetrics();
-        $this->commandHandler = $commandHandler ?? new CommandHandler($store, $this->metrics);
+        $this->commandHandler = $commandHandler ?? new CommandHandler($store, $this->metrics, $this->connectionRegistry);
         $this->expirationTimer = $expirationTimer ?? new ExpirationTimer($store, $this->metrics);
     }
 
@@ -54,6 +55,13 @@ final readonly class ServerEventHandler
 
     public function onConnect(Server $server, int $fd): void
     {
+        if (! $this->connectionRegistry->register($fd)) {
+            $server->send($fd, "-ERR max clients reached\r\n");
+            $server->close($fd);
+
+            return;
+        }
+
         $this->metrics->recordConnectionOpened();
         $this->output->writeln(sprintf('Client connected: #%d', $fd));
         $server->send($fd, "+OK SwooleKV connected\r\n");
@@ -61,6 +69,7 @@ final readonly class ServerEventHandler
 
     public function onReceive(Server $server, int $fd, int $reactorId, string $data): void
     {
+        $this->connectionRegistry->touch($fd);
         $command = $this->commandParser->parse($data);
 
         if ($command === null) {
@@ -74,6 +83,7 @@ final readonly class ServerEventHandler
 
     public function onClose(Server $server, int $fd): void
     {
+        $this->connectionRegistry->unregister($fd);
         $this->metrics->recordConnectionClosed();
         $this->output->writeln(sprintf('Client disconnected: #%d', $fd));
     }
