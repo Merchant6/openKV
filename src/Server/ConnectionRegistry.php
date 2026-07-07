@@ -26,7 +26,6 @@ final class ConnectionRegistry
     {
         $table = new Table($maxConnections + 128);
         $table->column('connected_at', Table::TYPE_INT);
-        $table->column('last_seen_at', Table::TYPE_INT);
         $table->create();
 
         return new self($table, $maxConnections);
@@ -47,24 +46,9 @@ final class ConnectionRegistry
         $this->connectionsHandled->add(1);
         $this->connections->set((string) $fd, [
             'connected_at' => $now,
-            'last_seen_at' => $now,
         ]);
 
         return true;
-    }
-
-    public function touch(int $fd): void
-    {
-        $row = $this->connections->get((string) $fd);
-
-        if ($row === false) {
-            return;
-        }
-
-        $this->connections->set((string) $fd, [
-            'connected_at' => $row['connected_at'],
-            'last_seen_at' => time(),
-        ]);
     }
 
     public function unregister(int $fd): void

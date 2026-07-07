@@ -1,6 +1,6 @@
 {
     "name": "saboor/swoole-kv",
-    "description": "Redis-inspired in-memory key-value database built with PHP and OpenSwoole",
+    "description": "openKv, a Redis-inspired in-memory key-value database built with PHP and OpenSwoole",
     "type": "project",
     "require": {
         "php": "^8.3",
@@ -19,7 +19,9 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "cs:check": "php-cs-fixer fix --dry-run --diff --sequential",
+        "cs:fix": "php-cs-fixer fix --sequential"
     },
     "authors": [
         {

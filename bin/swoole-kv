@@ -3,8 +3,18 @@
 
 declare(strict_types=1);
 
-use Saboor\SwooleKv\Console\ApplicationFactory;
+use Saboor\SwooleKv\Console\Command\BenchmarkCommand;
+use Saboor\SwooleKv\Console\Command\StatsCommand;
+use Saboor\SwooleKv\Console\Command\StopServerCommand;
+use Saboor\SwooleKv\Console\Command\StartServerCommand;
+use Symfony\Component\Console\Application;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
-exit(ApplicationFactory::create()->run());
+$application = new Application('openKv', '0.1.0');
+$application->addCommand(new BenchmarkCommand());
+$application->addCommand(new StartServerCommand());
+$application->addCommand(new StopServerCommand());
+$application->addCommand(new StatsCommand());
+
+exit($application->run());

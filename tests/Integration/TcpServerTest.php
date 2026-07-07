@@ -37,7 +37,7 @@ final class TcpServerTest extends TestCase
         $this->startServer(1);
 
         $firstConnection = $this->connect();
-        self::assertSame("+OK SwooleKV connected\r\n", $this->readLine($firstConnection));
+        self::assertSame("+OK openKv connected\r\n", $this->readLine($firstConnection));
 
         $secondConnection = $this->connect();
         self::assertSame("-ERR max clients reached\r\n", $this->readLine($secondConnection));
@@ -66,7 +66,7 @@ final class TcpServerTest extends TestCase
     {
         $connection = $this->connect();
 
-        self::assertSame("+OK SwooleKV connected\r\n", $this->readLine($connection));
+        self::assertSame("+OK openKv connected\r\n", $this->readLine($connection));
         self::assertSame("+PONG\r\n", $this->sendCommand($connection, 'PING'));
         self::assertSame("+OK\r\n", $this->sendCommand($connection, 'SET count 10'));
         self::assertSame(":11\r\n", $this->sendCommand($connection, 'INCR count'));
@@ -83,7 +83,7 @@ final class TcpServerTest extends TestCase
     {
         $connection = $this->connect();
 
-        self::assertSame("+OK SwooleKV connected\r\n", $this->readLine($connection));
+        self::assertSame("+OK openKv connected\r\n", $this->readLine($connection));
         self::assertSame("+OK\r\n", $this->sendCommand($connection, 'SET session abc123'));
         self::assertSame(":1\r\n", $this->sendCommand($connection, 'EXPIRE session 1'));
         self::assertMatchesRegularExpression('/^:[01]\r\n$/', $this->sendCommand($connection, 'TTL session'));
@@ -100,7 +100,7 @@ final class TcpServerTest extends TestCase
     {
         $connection = $this->connect();
 
-        self::assertSame("+OK SwooleKV connected\r\n", $this->readLine($connection));
+        self::assertSame("+OK openKv connected\r\n", $this->readLine($connection));
         self::assertSame("+OK\r\n", $this->sendCommand($connection, 'SET name Saboor'));
 
         $stats = $this->sendCommand($connection, 'STATS');
@@ -122,7 +122,7 @@ final class TcpServerTest extends TestCase
     {
         $connection = $this->connect();
 
-        self::assertSame("+OK SwooleKV connected\r\n", $this->readLine($connection));
+        self::assertSame("+OK openKv connected\r\n", $this->readLine($connection));
         self::assertSame("-ERR command 'UNKNOWN' is not implemented yet\r\n", $this->sendCommand($connection, 'UNKNOWN'));
         self::assertSame("-ERR wrong number of arguments for 'SET' command\r\n", $this->sendCommand($connection, 'SET only-key'));
         self::assertSame("-ERR seconds must be a positive integer\r\n", $this->sendCommand($connection, 'EXPIRE key nope'));

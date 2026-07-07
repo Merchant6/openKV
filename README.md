@@ -1,6 +1,6 @@
-# OpenKV
+# openKv
 
-OpenKV is a Redis-inspired in-memory key-value database written in PHP with OpenSwoole.
+openKv is a Redis-inspired in-memory key-value database written in PHP with OpenSwoole.
 
 The project is intentionally small, but it is built like infrastructure software: a long-lived TCP daemon, event-driven network callbacks, shared-memory storage, deterministic command handling, TTL expiration, and observable runtime metrics.
 
@@ -27,7 +27,7 @@ php -m | grep openswoole
 
 ## Start The Server
 
-Start OpenKV on the default address:
+Start openKv on the default address:
 
 ```bash
 php bin/swoole-kv server:start
@@ -57,7 +57,7 @@ php bin/swoole-kv server:start \
   --heartbeat-check-interval=30
 ```
 
-When the application-level connection limit is reached, SwooleKV responds with:
+When the application-level connection limit is reached, openKv responds with:
 
 ```txt
 -ERR max clients reached
@@ -81,7 +81,7 @@ nc 127.0.0.1 9501
 The server sends a connection banner:
 
 ```txt
-+OK OpenKV connected
++OK openKv connected
 ```
 
 Commands are plain text and line-oriented:
@@ -268,7 +268,7 @@ php bin/swoole-kv benchmark --connections=100 --requests=100000 --command=PING
 Example output:
 
 ```txt
-SwooleKV benchmark complete
+openKv benchmark complete
 command: PING
 connections: 100
 requests: 100000
@@ -279,6 +279,35 @@ requests_per_second: 42531.47
 ```
 
 Use connection counts to test client pressure, not one connection per request. For example, 100 hot persistent connections sending 1,000,000 commands is a throughput test, while 10,000 open sockets is primarily a connection scalability test.
+
+## Server Stats
+
+Read live server stats without opening `nc` manually:
+
+```bash
+php bin/swoole-kv stats
+```
+
+Use a custom address:
+
+```bash
+php bin/swoole-kv stats --host=127.0.0.1 --port=9601
+```
+
+## Stop The Server
+
+The server writes its PID to `runtime/openkv.pid` by default. Stop it with:
+
+```bash
+php bin/swoole-kv server:stop
+```
+
+Use the same PID path if the server was started with a custom one:
+
+```bash
+php bin/swoole-kv server:start --pid-file=/tmp/openkv.pid
+php bin/swoole-kv server:stop --pid-file=/tmp/openkv.pid
+```
 
 ## Testing
 
@@ -302,6 +331,13 @@ Run static analysis:
 vendor/bin/phpstan analyse src tests --level=5 --no-progress
 ```
 
+Check or fix PSR-12 formatting:
+
+```bash
+composer cs:check
+composer cs:fix
+```
+
 ## Project Structure
 
 ```txt
@@ -316,6 +352,7 @@ src/
   Timer/
 tests/
   Integration/
+  Unit/
 ```
 
 Key boundaries:
@@ -331,7 +368,7 @@ Key boundaries:
 
 ## Design Essay
 
-OpenKV is built around one central idea: PHP can be used to study infrastructure systems when it is run as a long-lived event-driven process instead of as a short-lived request script.
+openKv is built around one central idea: PHP can be used to study infrastructure systems when it is run as a long-lived event-driven process instead of as a short-lived request script.
 
 OpenSwoole provides the runtime shape for that experiment. The server is not a loop written by hand around blocking socket calls. It is an event-driven TCP daemon where OpenSwoole owns the socket lifecycle and calls PHP code when clients connect, send data, or disconnect. That keeps networking concerns explicit while still letting the application code stay small and readable.
 
@@ -360,8 +397,5 @@ The codebase is intentionally phased. Each commit introduces one coherent capabi
 Near-term improvements:
 
 - Usage-focused documentation examples for more command flows
-- Stats command: `php bin/swoole-kv stats`
-- Graceful stop command: `php bin/swoole-kv server:stop`
-- More deterministic unit tests for parser, storage, TTL, and metrics
 - RESP compatibility experiments
 - Persistence snapshot experiments

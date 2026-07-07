@@ -24,19 +24,21 @@ final readonly class ServerEventHandler
         private int $port,
         KeyValueStore $store,
         private readonly ConnectionRegistry $connectionRegistry,
+        private readonly ?string $pidFile = null,
         private CommandParser $commandParser = new CommandParser(),
-        ?CommandHandler $commandHandler = null,
-        ?ExpirationTimer $expirationTimer = null,
-        ?ServerMetrics $metrics = null,
     ) {
-        $this->metrics = $metrics ?? new ServerMetrics();
-        $this->commandHandler = $commandHandler ?? new CommandHandler($store, $this->metrics, $this->connectionRegistry);
-        $this->expirationTimer = $expirationTimer ?? new ExpirationTimer($store, $this->metrics);
+        $this->metrics = new ServerMetrics();
+        $this->commandHandler = new CommandHandler($store, $this->metrics, $this->connectionRegistry);
+        $this->expirationTimer = new ExpirationTimer($store, $this->metrics);
     }
 
     public function onStart(Server $server): void
     {
-        $this->output->writeln(sprintf('SwooleKV TCP server listening on %s:%d', $this->host, $this->port));
+        if ($this->pidFile !== null) {
+            $this->writePidFile((int) $server->master_pid);
+        }
+
+        $this->output->writeln(sprintf('openKv TCP server listening on %s:%d', $this->host, $this->port));
     }
 
     public function onWorkerStart(Server $server, int $workerId): void
@@ -64,12 +66,11 @@ final readonly class ServerEventHandler
 
         $this->metrics->recordConnectionOpened();
         $this->output->writeln(sprintf('Client connected: #%d', $fd));
-        $server->send($fd, "+OK SwooleKV connected\r\n");
+        $server->send($fd, "+OK openKv connected\r\n");
     }
 
     public function onReceive(Server $server, int $fd, int $reactorId, string $data): void
     {
-        $this->connectionRegistry->touch($fd);
         $command = $this->commandParser->parse($data);
 
         if ($command === null) {
@@ -86,5 +87,23 @@ final readonly class ServerEventHandler
         $this->connectionRegistry->unregister($fd);
         $this->metrics->recordConnectionClosed();
         $this->output->writeln(sprintf('Client disconnected: #%d', $fd));
+    }
+
+    public function onShutdown(Server $server): void
+    {
+        if ($this->pidFile !== null && is_file($this->pidFile)) {
+            unlink($this->pidFile);
+        }
+    }
+
+    private function writePidFile(int $pid): void
+    {
+        $directory = dirname($this->pidFile);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0775, true);
+        }
+
+        file_put_contents($this->pidFile, (string) $pid);
     }
 }

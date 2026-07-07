@@ -144,7 +144,7 @@ final class CommandHandler
         $connectionSnapshot = $this->connectionSnapshot($snapshot);
         $body = implode("\r\n", [
             '# Server',
-            'swoolekv_version:0.1.0',
+            'openkv_version:0.1.0',
             sprintf('uptime_seconds:%d', $snapshot['uptime_seconds']),
             sprintf('worker_count:%d', $snapshot['worker_count']),
             '',

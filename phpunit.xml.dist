@@ -7,7 +7,7 @@
     xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
 >
     <testsuites>
-        <testsuite name="SwooleKV">
+        <testsuite name="openKv">
             <directory>tests</directory>
         </testsuite>
     </testsuites>

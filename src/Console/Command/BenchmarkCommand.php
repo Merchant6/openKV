@@ -13,7 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
     name: 'benchmark',
-    description: 'Benchmark SwooleKV with a reusable client-side connection pool'
+    description: 'Benchmark openKv with a reusable client-side connection pool'
 )]
 final class BenchmarkCommand extends Command
 {
@@ -83,7 +83,7 @@ final class BenchmarkCommand extends Command
 
         $successful = $requests - $failed;
         $output->writeln([
-            'SwooleKV benchmark complete',
+            'openKv benchmark complete',
             sprintf('command: %s', $command),
             sprintf('connections: %d', $connections),
             sprintf('requests: %d', $requests),
